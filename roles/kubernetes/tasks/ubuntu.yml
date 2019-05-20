@@ -1,0 +1,23 @@
+---
+- name: install apt-transport-https
+  apt: name=apt-transport-https
+
+- name: import kubernetes repository public signing key
+  apt_key:
+    url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    state: present
+
+- name: configure kubernetes repository
+  apt_repository:
+    repo: "deb http://apt.kubernetes.io/ kubernetes-{{ ansible_lsb.codename }} main "
+    state: present
+    mode: 0644
+
+- name: install kubelet, kubeadm, kubectl & kubernetes-cni
+  apt: name={{ item }} update_cache=yes cache_valid_time=3600 state=present
+  with_items:
+    - kubelet
+    - kubeadm
+    - kubectl
+    - kubernetes-cni
+  ignore_errors: True

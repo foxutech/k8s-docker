@@ -1,0 +1,108 @@
+---
+- name: add centos extra official repository
+  yum_repository:
+    name: centos-extras
+    description: CentOS Extras
+    baseurl: http://mirror.centos.org/centos/7/extras/$basearch/
+    gpgcheck: yes
+    gpgkey: http://mirror.centos.org/centos/RPM-GPG-KEY-CentOS-7
+    state: present
+  register: centos_extras_repository_added
+
+- name: add docker official repository
+  yum_repository:
+    name: docker-ce-stable
+    description: Docker CE Stable - $basearch
+    baseurl: https://download.docker.com/linux/centos/7/$basearch/stable
+    gpgcheck: yes
+    gpgkey: https://download.docker.com/linux/centos/gpg
+    state: present
+  register: docker_repository_added
+
+- name: install docker-ce and additional required packages
+  package: name={{ item }} state=present
+  with_items:
+    - docker-ce
+    - yum-utils
+    - device-mapper-persistent-data
+    - lvm2
+    - python2-pip
+
+- name: install docker & docker-compose
+  pip: name={{ item.name }} version={{ item.version }}
+  with_items:
+    - { name: docker, version: 2.5.0 }
+    - { name: docker-compose, version: 1.15.0 }
+
+- name: start and enable at boot docker
+  service:
+    name: docker
+    enabled: yes
+    state: started
+
+- name: add telegraf user to docker group
+  user:
+    name: telegraf
+    groups: docker
+    append: yes
+
+- name: configure logrotate
+  blockinfile:
+    path: /etc/logrotate.d/docker
+    create: yes
+    block: |
+      /var/lib/docker/containers/*/*.log {
+        rotate 7
+        daily
+        compress
+        missingok
+        delaycompress
+        copytruncate
+      }
+    owner: root
+    mode: 0644
+
+- name: check if filebeat is installed
+  stat:
+    path: /etc/filebeat/conf.d
+  register: filebeatconf
+
+- name: configure filebeat
+  blockinfile:
+    path: /etc/filebeat/conf.d/docker.yml
+    create: yes
+    block: |
+      filebeat.prospectors:
+      - input_type: log
+        paths:
+          - /var/lib/docker/containers/*/*.log
+  when: filebeatconf.stat.exists and filebeatconf.stat.isdir == true
+  notify:
+    - restart filebeat
+
+- name: check if telegraf is installed
+  stat:
+    path: /etc/telegraf/telegraf.d/
+  register: telegrafconf
+
+- name: configure telegraf
+  blockinfile:
+    path: /etc/telegraf/telegraf.d/docker.conf
+    create: yes
+    block: |
+      [[inputs.docker]]
+        container_name_include = []
+        container_name_exclude = []
+        timeout = "10s"
+    owner: root
+    mode: 0644
+  when: telegrafconf.stat.exists and telegrafconf.stat.isdir == true
+  notify:
+    - restart telegraf
+
+- name: register docker in consul
+  consul:
+    service_name: docker
+    script: service docker status
+    interval: 1m
+  ignore_errors: True

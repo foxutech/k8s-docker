@@ -1,0 +1,36 @@
+---
+- name: restart filebeat unix
+  service: name=filebeat state=restarted
+  when: ansible_os_family != 'Windows'
+  listen: restart filebeat
+
+- name: restart filebeat win
+  win_service:
+    name: filebeat
+    state: restarted
+  when: ansible_os_family == 'Windows'
+  listen: restart filebeat
+
+- name: restart telegraf unix
+  service: name=telegraf state=restarted
+  when: ansible_os_family != 'Windows'
+  listen: restart telegraf
+
+- name: restart telegraf win
+  win_service:
+    name: telegraf
+    state: restarted
+  when: ansible_os_family == 'Windows'
+  listen: restart telegraf
+
+- name: restart docker unix
+  service: name=docker state=restarted
+  when: ansible_os_family != 'Windows'
+  listen: restart docker
+
+- name: restart docker win
+  win_service:
+    name: docker
+    state: restarted
+  when: ansible_os_family == 'Windows'
+  listen: restart docker
