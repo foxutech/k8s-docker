@@ -1,17 +1,6 @@
 ---
-- name: pre-annotation
-  command: /usr/local/bin/annotate.sh 'annotation' 'action':' start<br>role':' {{ role_name }}<br>target':' {{ inventory_hostname }}<br>user':' {{ ansible_user }}<br>ansible version':' {{ ansible_version.full }}' '{{ role_name }},{{ inventory_hostname }},{{ ansible_user }}'
-  ignore_errors: yes
-  tags:
-    - skip_ansible_lint
 
 - include_tasks: ubuntu.yml
   when: ansible_distribution == 'Ubuntu' and ansible_distribution_version == '16.04'
 - include_tasks: redhat.yml
   when: (ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat') and ansible_distribution_major_version == '7'
-
-- name: post-annotation
-  command: /usr/local/bin/annotate.sh 'annotation' 'action':' complete<br>role':' {{ role_name }}<br>target':' {{ inventory_hostname }}<br>user':' {{ ansible_user }}<br>ansible version':' {{ ansible_version.full }}' '{{ role_name }},{{ inventory_hostname }},{{ ansible_user }}'
-  ignore_errors: yes
-  tags:
-    - skip_ansible_lint
